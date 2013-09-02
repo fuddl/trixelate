@@ -1,10 +1,13 @@
 <?php
 
-define('SCALE', 5);
-define('THRESHOLD', 30);
+define('SCALE', 20);
+define('THRESHOLD', 1);
 define('ILLUSTRATOR_COMPATIBLE', 1);
-define('MAX_WIDTH', 150);
-define('MAX_HEIGHT', 150);
+define('MAX_WIDTH', 56);
+define('MAX_HEIGHT', 56);
+define('TRIANGLE_MODE', 'both'); //'up', 'down', 'both'
+define('USE_SYMBOLS', 1);
+
 global $base_colors;
 $base_colors = array(
   'alpha',
@@ -181,10 +184,14 @@ $x = 0;
 
 //  ChromePhp::log($trixels);
 
-function draw_rect($top, $left, $color) {
+function draw_rect($top = 0, $left = 0, $color = FALSE, $id = FALSE) {
   //ChromePhp::log($color);
-  $fill = make_color($color);
-  return '<rect x="' . $top*SCALE . '" y="' . $left*SCALE . '" width="' . SCALE . '" height="' . SCALE . '" fill="' . $fill . '"/>';
+
+  $attr = array();
+  if ($color) {
+    $attr[] = 'fill="' . make_color($color) . '"';
+  };
+  return '<rect x="' . $top*SCALE . '" y="' . $left*SCALE . '" width="' . SCALE . '" height="' . SCALE . '" ' . implode(' ', $attr) . '/>';
 }
 
 function alpha_convert($value) {
@@ -199,36 +206,51 @@ function draw_triangle($top, $left, $dir, $color) {
   $fill = make_color($color);
   //  ChromePhp::log($dir);
 
-  switch ($dir) {
-    case 'sw':
-    $points = array(
-      array(0,0),
-      array(0,1),
-      array(1,1)
+    if (TRIANGLE_MODE == 'up') {
+      if($dir == 'ne') {
+        $dir = 'nw';
+      } elseif ($dir == 'sw') {
+        $dir = 'se';
+      }
+    }
+    elseif (TRIANGLE_MODE == 'down') {
+      if($dir == 'nw') {
+        $dir = 'ne';
+      } elseif ($dir == 'se') {
+        $dir = 'sw';
+      }
+    }
+
+    switch ($dir) {
+      case 'sw':
+      $points = array(
+        array(0,0),
+        array(0,1),
+        array(1,1)
       );
-    break;
-    case 'se':
-    $points = array(
-      array(0,1),
-      array(1,1),
-      array(1,0)
+      break;
+      case 'se':
+      $points = array(
+        array(0,1),
+        array(1,1),
+        array(1,0)
       );
-    break;
-    case 'ne':
-    $points = array(
-      array(0,0),
-      array(1,0),
-      array(1,1)
-      );
-    break;
-    case 'nw':
-    $points = array(
-      array(0,1),
-      array(0,0),
-      array(1,0)
-      );
-    break;
-  }
+      break;
+      case 'ne':
+      $points = array(
+        array(0,0),
+        array(1,0),
+        array(1,1)
+        );
+      break;
+      case 'nw':
+      $points = array(
+        array(0,1),
+        array(0,0),
+        array(1,0)
+        );
+      break;
+    }
 
 
   foreach ($points as $key => $value) {
@@ -237,8 +259,14 @@ function draw_triangle($top, $left, $dir, $color) {
     $points[$key] = implode($points[$key], ' ');
   }
 
-
   return '<path d="M ' . implode($points, ' ') . ' z" fill="' . $fill . '"/>';
+}
+
+$defs = '';
+if(USE_SYMBOLS) {
+  $defs .= '<defs>';
+  $defs .= draw_rect(0, 0, false, 'p');
+  $defs .= '</defs>';
 }
 
 
@@ -247,15 +275,15 @@ echo '<?xml version="1.0" encoding="iso-8859-1"?><!DOCTYPE svg PUBLIC "-//W3C//D
 
 echo '<svg xmlns="http://www.w3.org/2000/svg" height="' . $h*SCALE/2 . '" width="' . $w*SCALE/2 . '">';
 
-foreach ($trixels as $y => $row) {
+echo $defs;
+
+foreach ($trixels as $x => $row) {
   print '<g>';
-  foreach ($trixels as $x => $trixel) {
+  foreach ($row as $y => $trixel) {
     print '<g>';
     print draw_rect($x, $y, $trixels[$x][$y]['a-normal-color']);
-    //print draw_rect($x, $y, $trixels[$x][$y]['a-color']);
     if($trixels[$x][$y]['stranges-color']) {
       $strange_color = $trixels[$x][$y]['stranges-color'];
-      //ChromePhp::log($trixels[$x][$y]['o-colors'][$strange_color]);
       print draw_triangle($x, $y, $strange_color , $trixels[$x][$y]['o-colors'][$strange_color]);
     }
     print '</g>';
